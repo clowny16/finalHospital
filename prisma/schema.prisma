@@ -1,0 +1,228 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  password      String
+  role          String    @default("PATIENT")
+  phone         String?
+  dateOfBirth   DateTime?
+  gender        String?
+  address       String?
+  profileImage  String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  patient       Patient?
+  doctor        Doctor?
+  admin         Admin?
+  notifications Notification[]
+  @@map("users")
+}
+
+model Patient {
+  id               String         @id @default(cuid())
+  userId           String         @unique
+  bloodGroup       String?
+  allergies        String?
+  emergencyContact String?
+  insuranceNumber  String?
+  medicalHistory   String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments     Appointment[]
+  labReports       LabReport[]
+  donations        OrganDonation[]
+  admissions       BedAdmission[]
+  @@map("patients")
+}
+
+model Doctor {
+  id                String           @id @default(cuid())
+  userId            String           @unique
+  specialization    String
+  qualification     String
+  licenseNumber     String           @unique
+  department        String
+  experience        Int
+  consultationFee   Float
+  isAvailable       Boolean          @default(true)
+  workingDays       String           @default("")
+  workingHoursStart String
+  workingHoursEnd   String
+  bio               String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments      Appointment[]
+  labReports        LabReport[]
+  schedules         DoctorSchedule[]
+  @@map("doctors")
+}
+
+model DoctorSchedule {
+  id        String   @id @default(cuid())
+  doctorId  String
+  date      DateTime
+  startTime String
+  endTime   String
+  isBooked  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  @@map("doctor_schedules")
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  adminCode String   @unique
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("admins")
+}
+
+model Appointment {
+  id        String   @id @default(cuid())
+  patientId String
+  doctorId  String
+  date      DateTime
+  timeSlot  String
+  status    String   @default("PENDING")
+  reason    String?
+  notes     String?
+  type      String   @default("IN_PERSON")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  @@map("appointments")
+}
+
+model Bed {
+  id         String         @id @default(cuid())
+  bedNumber  String         @unique
+  ward       String
+  floor      Int
+  type       String
+  status     String         @default("AVAILABLE")
+  features   String         @default("")
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  admissions BedAdmission[]
+  @@map("beds")
+}
+
+model BedAdmission {
+  id           String    @id @default(cuid())
+  bedId        String
+  patientId    String
+  admittedAt   DateTime  @default(now())
+  dischargedAt DateTime?
+  diagnosis    String?
+  notes        String?
+  bed          Bed       @relation(fields: [bedId], references: [id])
+  patient      Patient   @relation(fields: [patientId], references: [id])
+  @@map("bed_admissions")
+}
+
+model BloodBank {
+  id             String   @id @default(cuid())
+  bloodGroup     String   @unique
+  unitsAvailable Int      @default(0)
+  unitsReserved  Int      @default(0)
+  lastUpdated    DateTime @default(now())
+  donorCount     Int      @default(0)
+  @@map("blood_bank")
+}
+
+model BloodRequest {
+  id           String    @id @default(cuid())
+  patientName  String
+  bloodGroup   String
+  units        Int
+  urgency      String
+  hospital     String?
+  contactPhone String
+  status       String    @default("PENDING")
+  requestedAt  DateTime  @default(now())
+  fulfilledAt  DateTime?
+  @@map("blood_requests")
+}
+
+model LabReport {
+  id           String    @id @default(cuid())
+  patientId    String
+  doctorId     String?
+  testName     String
+  testCategory String
+  status       String    @default("PENDING")
+  result       String?
+  normalRange  String?
+  remarks      String?
+  reportUrl    String?
+  orderedAt    DateTime  @default(now())
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  patient      Patient   @relation(fields: [patientId], references: [id])
+  doctor       Doctor?   @relation(fields: [doctorId], references: [id])
+  @@map("lab_reports")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("notifications")
+}
+
+model OrganDonation {
+  id           String   @id @default(cuid())
+  patientId    String
+  organs       String
+  status       String   @default("REGISTERED")
+  registeredAt DateTime @default(now())
+  notes        String?
+  consentForm  String?
+  patient      Patient  @relation(fields: [patientId], references: [id])
+  @@map("organ_donations")
+}
+
+model ChatLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  sessionId String
+  message   String
+  response  String
+  intent    String?
+  createdAt DateTime @default(now())
+  @@map("chat_logs")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  @@map("audit_logs")
+}
